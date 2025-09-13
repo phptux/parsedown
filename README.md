@@ -15,7 +15,7 @@ This repo is ready for > PHP v8.3
 - [Super fast](http://parsedown.org/speed)
 - Extensible
 - [GitHub flavored](https://github.github.com/gfm)
-- [Tested](http://parsedown.org/tests/) in 5.3 to 7.3
+- [Tested](http://parsedown.org/tests/) in 8.3, 8.4
 - [Markdown Extra extension](https://github.com/erusev/parsedown-extra)
 
 ## Installation
@@ -23,13 +23,13 @@ This repo is ready for > PHP v8.3
 Install the [composer package]:
 
 ```sh
-composer require erusev/parsedown
+composer require azirax/parsedown
 ```
 
 Or download the [latest release] and include `Parsedown.php`
 
-[composer package]: https://packagist.org/packages/erusev/parsedown "The Parsedown package on packagist.org"
-[latest release]: https://github.com/erusev/parsedown/releases/latest "The latest release of Parsedown"
+[composer package]: https://packagist.org/packages/azirax/parsedown "The Parsedown package on packagist.org"
+[latest release]: https://github.com/azirax/parsedown/releases/latest "The latest release of Parsedown"
 
 ## Example
 
