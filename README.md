@@ -6,6 +6,8 @@
 
 Better Markdown Parser in PHP — <a href="https://parsedown.org/demo">demo</a>
 
+This repo is ready for > PHP v8.3
+
 ## Features
 
 - One file

@@ -2,7 +2,7 @@
 
 class TestParsedown extends Parsedown
 {
-    public function getTextLevelElements()
+    public function getTextLevelElements(): array
     {
         return $this->textLevelElements;
     }

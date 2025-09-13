@@ -1,71 +1,74 @@
 <?php
+
 require 'SampleExtensions.php';
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class ParsedownTest extends TestCase
 {
-    final function __construct($name = null, array $data = array(), $dataName = '')
-    {
-        $this->dirs = $this->initDirs();
-        $this->Parsedown = $this->initParsedown();
+    protected ?TestParsedown $Parsedown = null;
 
-        parent::__construct($name, $data, $dataName);
+    public static function data(): array
+    {
+        $dirs = [__DIR__ . '/data/'];
+        $data = [];
+
+        foreach ($dirs as $dir) {
+            $Folder = new DirectoryIterator($dir);
+
+            foreach ($Folder as $File) {
+                /** @var $File DirectoryIterator */
+
+                if (!$File->isFile()) {
+                    continue;
+                }
+
+                $filename = $File->getFilename();
+
+                $extension = pathinfo($filename, PATHINFO_EXTENSION);
+
+                if ($extension !== 'md') {
+                    continue;
+                }
+
+                $basename = $File->getBasename('.md');
+
+                if (file_exists($dir . $basename . '.html')) {
+                    $data [] = [$basename, $dir];
+                }
+            }
+        }
+
+        return $data;
     }
 
-    private $dirs;
-    protected $Parsedown;
-
-    /**
-     * @return array
-     */
-    protected function initDirs()
+    public function testLateStaticBinding()
     {
-        $dirs []= dirname(__FILE__).'/data/';
+        $parsedown = Parsedown::instance();
+        $this->assertInstanceOf('Parsedown', $parsedown);
 
-        return $dirs;
-    }
+        // After instance is already called on Parsedown
+        // subsequent calls with the same arguments return the same instance
+        $sameParsedown = TestParsedown::instance();
+        $this->assertInstanceOf('Parsedown', $sameParsedown);
+        $this->assertSame($parsedown, $sameParsedown);
 
-    /**
-     * @return Parsedown
-     */
-    protected function initParsedown()
-    {
-        $Parsedown = new TestParsedown();
+        $testParsedown = TestParsedown::instance('test late static binding');
+        $this->assertInstanceOf('TestParsedown', $testParsedown);
 
-        return $Parsedown;
-    }
-
-    /**
-     * @dataProvider data
-     * @param $test
-     * @param $dir
-     */
-    function test_($test, $dir)
-    {
-        $markdown = file_get_contents($dir . $test . '.md');
-
-        $expectedMarkup = file_get_contents($dir . $test . '.html');
-
-        $expectedMarkup = str_replace("\r\n", "\n", $expectedMarkup);
-        $expectedMarkup = str_replace("\r", "\n", $expectedMarkup);
-
-        $this->Parsedown->setSafeMode(substr($test, 0, 3) === 'xss');
-        $this->Parsedown->setStrictMode(substr($test, 0, 6) === 'strict');
-
-        $actualMarkup = $this->Parsedown->text($markdown);
-
-        $this->assertEquals($expectedMarkup, $actualMarkup);
+        $sameInstanceAgain = TestParsedown::instance('test late static binding');
+        $this->assertSame($testParsedown, $sameInstanceAgain);
     }
 
     function testRawHtml()
     {
-        $markdown = "```php\nfoobar\n```";
-        $expectedMarkup = '<pre><code class="language-php"><p>foobar</p></code></pre>';
+        $markdown           = "```php\nfoobar\n```";
+        $expectedMarkup     = '<pre><code class="language-php"><p>foobar</p></code></pre>';
         $expectedSafeMarkup = '<pre><code class="language-php">&lt;p&gt;foobar&lt;/p&gt;</code></pre>';
 
         $unsafeExtension = new UnsafeExtension;
-        $actualMarkup = $unsafeExtension->text($markdown);
+        $actualMarkup    = $unsafeExtension->text($markdown);
 
         $this->assertEquals($expectedMarkup, $actualMarkup);
 
@@ -77,12 +80,12 @@ class ParsedownTest extends TestCase
 
     function testTrustDelegatedRawHtml()
     {
-        $markdown = "```php\nfoobar\n```";
-        $expectedMarkup = '<pre><code class="language-php"><p>foobar</p></code></pre>';
+        $markdown           = "```php\nfoobar\n```";
+        $expectedMarkup     = '<pre><code class="language-php"><p>foobar</p></code></pre>';
         $expectedSafeMarkup = $expectedMarkup;
 
         $unsafeExtension = new TrustDelegatedExtension;
-        $actualMarkup = $unsafeExtension->text($markdown);
+        $actualMarkup    = $unsafeExtension->text($markdown);
 
         $this->assertEquals($expectedMarkup, $actualMarkup);
 
@@ -92,42 +95,27 @@ class ParsedownTest extends TestCase
         $this->assertEquals($expectedSafeMarkup, $actualSafeMarkup);
     }
 
-    function data()
+    /**
+     *
+     * @param $test
+     * @param $dir
+     */
+    #[DataProvider('data')]
+    public function test_($test, $dir)
     {
-        $data = array();
+        $markdown = file_get_contents($dir . $test . '.md');
 
-        foreach ($this->dirs as $dir)
-        {
-            $Folder = new DirectoryIterator($dir);
+        $expectedMarkup = file_get_contents($dir . $test . '.html');
 
-            foreach ($Folder as $File)
-            {
-                /** @var $File DirectoryIterator */
+        $expectedMarkup = str_replace("\r\n", "\n", $expectedMarkup);
+        $expectedMarkup = str_replace("\r", "\n", $expectedMarkup);
 
-                if ( ! $File->isFile())
-                {
-                    continue;
-                }
+        $this->Parsedown->setSafeMode(str_starts_with($test, 'xss'));
+        $this->Parsedown->setStrictMode(str_starts_with($test, 'strict'));
 
-                $filename = $File->getFilename();
+        $actualMarkup = $this->Parsedown->text($markdown);
 
-                $extension = pathinfo($filename, PATHINFO_EXTENSION);
-
-                if ($extension !== 'md')
-                {
-                    continue;
-                }
-
-                $basename = $File->getBasename('.md');
-
-                if (file_exists($dir . $basename . '.html'))
-                {
-                    $data []= array($basename, $dir);
-                }
-            }
-        }
-
-        return $data;
+        $this->assertEquals($expectedMarkup, $actualMarkup);
     }
 
     public function test_no_markup()
@@ -179,21 +167,16 @@ EXPECTED_HTML;
         $this->assertEquals($expectedHtml, $parsedownWithNoMarkup->text($markdownWithHtml));
     }
 
-    public function testLateStaticBinding()
+    /**
+     * @return TestParsedown
+     */
+    protected function initParsedown(): TestParsedown
     {
-        $parsedown = Parsedown::instance();
-        $this->assertInstanceOf('Parsedown', $parsedown);
+        return new TestParsedown();
+    }
 
-        // After instance is already called on Parsedown
-        // subsequent calls with the same arguments return the same instance
-        $sameParsedown = TestParsedown::instance();
-        $this->assertInstanceOf('Parsedown', $sameParsedown);
-        $this->assertSame($parsedown, $sameParsedown);
-
-        $testParsedown = TestParsedown::instance('test late static binding');
-        $this->assertInstanceOf('TestParsedown', $testParsedown);
-
-        $sameInstanceAgain = TestParsedown::instance('test late static binding');
-        $this->assertSame($testParsedown, $sameInstanceAgain);
+    protected function setUp(): void
+    {
+        $this->Parsedown = $this->initParsedown();
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -9,65 +10,65 @@ use PHPUnit\Framework\TestCase;
  */
 class CommonMarkTestStrict extends TestCase
 {
-    const SPEC_URL = 'https://raw.githubusercontent.com/jgm/CommonMark/master/spec.txt';
+    public const string SPEC_URL = 'https://raw.githubusercontent.com/jgm/CommonMark/master/spec.txt';
 
-    protected $parsedown;
-
-    protected function setUp() : void
-    {
-        $this->parsedown = new TestParsedown();
-        $this->parsedown->setUrlsLinked(false);
-    }
-
-    /**
-     * @dataProvider data
-     * @param $id
-     * @param $section
-     * @param $markdown
-     * @param $expectedHtml
-     */
-    public function testExample($id, $section, $markdown, $expectedHtml)
-    {
-        $actualHtml = $this->parsedown->text($markdown);
-        $this->assertEquals($expectedHtml, $actualHtml);
-    }
+    protected ?TestParsedown $parsedown = null;
 
     /**
      * @return array
      */
-    public function data()
+    public static function data(): array
     {
         $spec = file_get_contents(self::SPEC_URL);
         if ($spec === false) {
-            $this->fail('Unable to load CommonMark spec from ' . self::SPEC_URL);
+            return [];
         }
 
         $spec = str_replace("\r\n", "\n", $spec);
         $spec = strstr($spec, '<!-- END TESTS -->', true);
 
-        $matches = array();
+        $matches = [];
         preg_match_all('/^`{32} example\n((?s).*?)\n\.\n(?:|((?s).*?)\n)`{32}$|^#{1,6} *(.*?)$/m', $spec, $matches, PREG_SET_ORDER);
 
-        $data = array();
-        $currentId = 0;
+        $data           = [];
+        $currentId      = 0;
         $currentSection = '';
         foreach ($matches as $match) {
             if (isset($match[3])) {
                 $currentSection = $match[3];
             } else {
                 $currentId++;
-                $markdown = str_replace('→', "\t", $match[1]);
-                $expectedHtml = isset($match[2]) ? str_replace('→', "\t", $match[2]) : '';
+                $markdown     = str_replace('→', "\t", $match[1]);
+                $expectedHtml = isset($match[2]) ? str_replace(['→'], ["\t"], $match[2]) : '';
 
-                $data[$currentId] = array(
-                    'id' => $currentId,
-                    'section' => $currentSection,
-                    'markdown' => $markdown,
-                    'expectedHtml' => $expectedHtml
-                );
+                $data[$currentId] = [
+                    'id'           => $currentId,
+                    'section'      => $currentSection,
+                    'markdown'     => $markdown,
+                    'expectedHtml' => $expectedHtml,
+                ];
             }
         }
 
         return $data;
+    }
+
+    /**
+     * @param $id
+     * @param $section
+     * @param $markdown
+     * @param $expectedHtml
+     */
+    #[DataProvider('data')]
+    public function testExample($id, $section, $markdown, $expectedHtml)
+    {
+        $actualHtml = $this->parsedown->text($markdown);
+        $this->assertEquals($expectedHtml, $actualHtml);
+    }
+
+    protected function setUp(): void
+    {
+        $this->parsedown = new TestParsedown();
+        $this->parsedown->setUrlsLinked(false);
     }
 }
